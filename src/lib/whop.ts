@@ -2,6 +2,26 @@ import { WhopServerSdk } from '@whop/api';
 
 type WhopSdkShape = {
   verifyUserToken: (headers: Headers) => Promise<{ userId?: string }>;
+  users: {
+    getUser: (args: { userId: string }) => Promise<{
+      id: string;
+      name?: string;
+      username?: string;
+      profilePicture?: { sourceUrl?: string };
+      city?: string;
+      country?: string;
+      bio?: string;
+      phoneVerified?: boolean;
+      banner?: { sourceUrl?: string };
+      createdAt?: number;
+      userStat?: {
+        moneyEarned24Hours?: number;
+        moneyEarned30Days?: number;
+        moneyEarned7Days?: number;
+        moneyEarnedLifetime?: number;
+      };
+    }>;
+  };
 };
 
 let cachedSdk: WhopSdkShape | null = null;

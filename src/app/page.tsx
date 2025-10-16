@@ -18,16 +18,19 @@ export default function Home() {
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch('/api/chat/messages?limit=100').then(r => r.json()).then(setMessages);
+    const selfOrigin = process.env.NEXT_PUBLIC_SELF_ORIGIN;
+    const isWhopHost = typeof location !== 'undefined' && location.hostname.endsWith('apps.whop.com');
+    // IMPORTANT: under apps.whop.com, use relative paths so Whop forwards auth headers
+    const apiBase = isWhopHost ? '' : '';
+    fetch(`${apiBase}/api/chat/messages?limit=100`).then(r => r.json()).then(setMessages);
     // Subscribe to WS updates
     let ws: WebSocket | null = null;
     function connect() {
       try {
-        // Some Next dev setups use 3001 for HMR; ensure we talk to the app port (usually 3000)
+        // Use absolute WS origin when embedded under apps.whop.com
         const isSecure = location.protocol === 'https:';
-        const host = location.hostname;
-        const port = location.port === '3001' ? '3000' : location.port;
-        const url = `${isSecure ? 'wss' : 'ws'}://${host}${port ? ':' + port : ''}/api/ws`;
+        const wsBase = isWhopHost && selfOrigin ? selfOrigin.replace(/^http/, 'ws') : `${isSecure ? 'wss' : 'ws'}://${location.host}`;
+        const url = `${wsBase}/api/ws`;
         ws = new WebSocket(url);
         ws.onmessage = (e) => {
           const msg = JSON.parse(e.data);
@@ -67,6 +70,9 @@ export default function Home() {
       const msg = await res.json();
       setMessages(prev => [...prev, msg]);
       setInput("");
+    } else {
+      const err = await res.json().catch(() => ({}));
+      console.error('Send failed', res.status, err);
     }
   }
 

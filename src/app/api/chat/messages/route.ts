@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB();
     const whopSdk = getWhopSdk();
-    const { userId } = await whopSdk.verifyUserToken(await headers());
+    const hdrs = await headers();
+    const { userId } = await whopSdk.verifyUserToken(hdrs);
     const companyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID!;
 
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,10 +38,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message content or image is required' }, { status: 400 });
     }
 
+    // fetch detailed user info for display
+    const userData = await whopSdk.users.getUser({ userId: userId as string });
+
     const message = await Message.create({
       companyId,
       userId,
-      username: body.username,
+      username: userData?.username || body.username,
+      name: userData?.name,
+      avatarUrl: userData?.profilePicture?.sourceUrl,
       content,
       imageUrl,
       mentions

@@ -4,6 +4,8 @@ export interface IMessage extends mongoose.Document {
   companyId: string;
   userId: string;
   username?: string;
+  name?: string;
+  avatarUrl?: string;
   content?: string;
   imageUrl?: string;
   mentions: Array<{ userId: string; username?: string }>; 
@@ -14,6 +16,8 @@ const MessageSchema = new Schema<IMessage>({
   companyId: { type: String, required: true, index: true },
   userId: { type: String, required: true },
   username: { type: String },
+  name: { type: String },
+  avatarUrl: { type: String },
   content: { type: String },
   imageUrl: { type: String },
   mentions: [
