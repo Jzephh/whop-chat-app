@@ -111,9 +111,10 @@ export default function Home() {
     const authHeaders: Record<string, string> = {};
     if (token) authHeaders['Authorization'] = `Bearer ${token}`;
     if (imageFile) {
-      // Show upload progress using XHR so we can get onprogress events
+      // Upload with progress to our server route (server owns Cloudinary config)
       const form = new FormData();
       form.append('file', imageFile);
+
       imageUrl = await new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${API}/api/upload`);
@@ -122,14 +123,25 @@ export default function Home() {
           if (ev.lengthComputable) setUploadPct(Math.round((ev.loaded / ev.total) * 100));
           else setUploadPct(null);
         };
-        xhr.onerror = () => reject(new Error('Upload failed'));
+        xhr.onerror = () => {
+          console.error('Upload network error');
+          reject(new Error('Upload failed'));
+        };
         xhr.onload = () => {
           try {
-            const resp = JSON.parse(xhr.responseText);
-            if (xhr.status >= 200 && xhr.status < 300 && resp?.url) resolve(resp.url as string);
-            else reject(new Error(resp?.error || 'Upload failed'));
-          } catch (e) { reject(e as Error); }
+            const resp = JSON.parse(xhr.responseText || '{}');
+            const url = resp.url;
+            if (xhr.status >= 200 && xhr.status < 300 && url) resolve(url as string);
+            else {
+              console.error('Upload error', xhr.status, resp);
+              reject(new Error(resp?.error || 'Upload failed'));
+            }
+          } catch (e) {
+            console.error('Upload parse error', e);
+            reject(e as Error);
+          }
         };
+        setUploadPct(0);
         xhr.send(form);
       }).finally(() => setUploadPct(null));
       setImageFile(null);
@@ -190,7 +202,7 @@ export default function Home() {
         })}
       </div>
       <div className="sticky bottom-0 w-full">
-        <div className="bg-[#151517] border-t border-[var(--border)] flex items-center">
+        <div className="relative bg-[#151517] border-t border-[var(--border)] flex items-center">
           {uploadPct !== null && (
             <div className="absolute -top-1 left-0 right-0 h-[2px] bg-zinc-800">
               <div className="h-full bg-blue-500" style={{ width: `${uploadPct}%` }} />
