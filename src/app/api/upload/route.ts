@@ -8,7 +8,13 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const whopSdk = getWhopSdk();
-    const { userId } = await whopSdk.verifyUserToken(await headers());
+    let userId: string | undefined;
+    try {
+      const res = await whopSdk.verifyUserToken(await headers());
+      userId = res?.userId as string | undefined;
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const formData = await request.formData();
@@ -34,8 +40,7 @@ export async function POST(request: NextRequest) {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: process.env.CLOUDINARY_FOLDER || 'whop-chat',
-          resource_type: 'auto',
-          filename_override: file.name
+          resource_type: 'auto'
         },
         (error, res) => {
           if (error || !res) return reject(error || new Error('Upload failed'));
