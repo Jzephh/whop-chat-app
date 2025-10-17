@@ -52,8 +52,8 @@ export async function POST(request: NextRequest) {
       mentions
     });
 
-    // Broadcast to WS subscribers
-    broadcastJson({ type: 'message.created', payload: message });
+    // Broadcast to real-time subscribers (WS + SSE)
+    broadcastJson({ type: 'message.created', payload: message.toObject ? message.toObject() : message });
 
     return NextResponse.json(message);
   } catch (err) {

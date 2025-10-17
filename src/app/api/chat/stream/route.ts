@@ -1,6 +1,6 @@
 import { addSseSubscriber } from '@/lib/ws';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET() {
   let cleanup: (() => void) | undefined;
