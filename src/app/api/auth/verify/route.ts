@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getWhopSdk } from '@/lib/whop';
 import { headers } from 'next/headers';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
