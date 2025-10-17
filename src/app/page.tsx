@@ -143,7 +143,7 @@ export default function Home() {
                 </div>
               )}
               <div className={`max-w-[70%] ${isSelf ? '' : ''}`}>
-                <div className={`${isSelf ? 'bg-[#2563eb] text-white' : 'bg-[#171719] text-[var(--text)]'} rounded-2xl px-3 py-2 text-[13px] leading-6 shadow-sm ${isSelf ? '' : 'border border-[var(--border)]'}`}>
+                <div className={`bubble ${isSelf ? 'bubble-self' : 'bubble-other'}`}>
                   {m.content && <div>{m.content}</div>}
                   {m.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element

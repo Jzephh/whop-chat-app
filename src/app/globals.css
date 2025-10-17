@@ -19,3 +19,10 @@ body {
 .whop-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
 .scrollbar::-webkit-scrollbar { width: 8px; }
 .scrollbar::-webkit-scrollbar-thumb { background: #2a2a2e; border-radius: 10px; }
+
+/* Chat bubbles to match Whop style */
+.bubble { position: relative; display: inline-block; border-radius: 18px; padding: 8px 12px; line-height: 1.6; font-size: 13px; }
+.bubble-self { background: #2563eb; color: #ffffff; }
+.bubble-self::after { content: ""; position: absolute; right: -4px; bottom: 6px; border-left: 6px solid #2563eb; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+.bubble-other { background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+.bubble-other::after { content: ""; position: absolute; left: -4px; bottom: 6px; border-right: 6px solid var(--panel); border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
