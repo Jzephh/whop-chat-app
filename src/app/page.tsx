@@ -55,18 +55,28 @@ export default function Home() {
       setMessages(data);
     })();
     // Subscribe to SSE updates (works under apps.whop.com)
-    const es = new EventSource('/api/chat/stream');
-    es.onmessage = (e) => {
+    let es: EventSource | null = null;
+    let retryMs = 1000;
+    const open = () => {
       try {
-        const msg = JSON.parse(e.data);
-        if (msg?.type === 'message.created') setMessages((prev) => [...prev, msg.payload]);
-      } catch {}
+        es = new EventSource('/api/chat/stream');
+        es.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+            if (msg?.type === 'message.created') setMessages((prev) => [...prev, msg.payload]);
+          } catch {}
+        };
+        es.onerror = () => {
+          try { es?.close(); } catch {}
+          es = null;
+          setTimeout(open, Math.min(10000, (retryMs *= 2)));
+        };
+      } catch {
+        setTimeout(open, Math.min(10000, (retryMs *= 2)));
+      }
     };
-    es.onerror = () => {
-      try { es.close(); } catch {}
-      setTimeout(() => { location.reload(); }, 2000);
-    };
-    return () => { try { es.close(); } catch {} };
+    open();
+    return () => { try { es?.close(); } catch {} };
   }, [getWhopToken]);
 
   useEffect(() => {
