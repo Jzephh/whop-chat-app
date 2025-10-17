@@ -19,6 +19,7 @@ export default function Home() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [selfUserId, setSelfUserId] = useState<string | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [pendingImages, setPendingImages] = useState<Array<{ id: string; url: string; createdAt: number }>>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const sdkRef = useRef<ReturnType<typeof createAppIframeSDK> | null>(null);
 
@@ -115,6 +116,11 @@ export default function Home() {
       const form = new FormData();
       form.append('file', imageFile);
 
+      // optimistic preview
+      const tempId = `temp-${Date.now()}`;
+      const localUrl = URL.createObjectURL(imageFile);
+      setPendingImages((p) => [...p, { id: tempId, url: localUrl, createdAt: Date.now() }]);
+
       imageUrl = await new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${API}/api/upload`);
@@ -145,6 +151,8 @@ export default function Home() {
         xhr.send(form);
       }).finally(() => setUploadPct(null));
       setImageFile(null);
+      // remove optimistic preview after upload completes
+      setPendingImages((p) => p.filter((m) => m.id !== tempId));
     }
     const res = await fetch(`${API}/api/chat/messages`, {
       method: 'POST',
@@ -172,7 +180,7 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full flex flex-col">
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar">
-        {messages.map((m: ChatMessage & { avatarUrl?: string }) => {
+        {[...pendingImages.map(pi => ({ _id: pi.id, userId: selfUserId || '', content: '', imageUrl: pi.url, createdAt: new Date(pi.createdAt).toISOString() } as ChatMessage)), ...messages].map((m: (ChatMessage & { avatarUrl?: string })) => {
           const isSelf = selfUserId && m.userId === selfUserId;
           return (
             <div key={m._id} className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}>
@@ -203,11 +211,17 @@ export default function Home() {
       </div>
       <div className="sticky bottom-0 w-full">
         <div className="relative bg-[#151517] border-t border-[var(--border)] flex items-center">
-          {uploadPct !== null && (
-            <div className="absolute -top-1 left-0 right-0 h-[2px] bg-zinc-800">
-              <div className="h-full bg-blue-500" style={{ width: `${uploadPct}%` }} />
-            </div>
-          )}
+          <div className={`w-full ${uploadPct === null ? 'hidden' : ''}`}>
+            {uploadPct !== null ? (
+              <div className="progress-bar">
+                {Number.isFinite(uploadPct) ? (
+                  <div className="progress-fill" style={{ width: `${uploadPct}%` }} />
+                ) : (
+                  <div className="progress-indeterminate" />
+                )}
+              </div>
+            ) : null}
+          </div>
           <button
             aria-label="Add"
             onClick={() => document.getElementById('fileInput')?.click()}
