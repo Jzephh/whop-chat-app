@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
   const since = searchParams.get('since');
 
-  const query: any = { companyId };
+  const query: { companyId: string; createdAt?: { $gt: Date } } = { companyId };
   if (since) {
     const ts = Number(since);
     if (!Number.isNaN(ts)) query.createdAt = { $gt: new Date(ts) };
