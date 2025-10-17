@@ -41,6 +41,7 @@ export default function Home() {
   useEffect(() => {
     // Use relative REST paths so Whop forwards auth headers and avoids CORS
     const API = '';
+    let lastTs = 0;
     (async () => {
       const token = await getWhopToken();
       const headers: Record<string, string> = {};
@@ -56,6 +57,7 @@ export default function Home() {
       const res = await fetch(`${API}/api/chat/messages?limit=100`, { headers });
       const data = await res.json();
       setMessages(data);
+      if (data?.length) lastTs = new Date(data[data.length - 1].createdAt).getTime();
     })();
     // Subscribe to SSE updates (works under apps.whop.com)
     let es: EventSource | null = null;
@@ -63,10 +65,24 @@ export default function Home() {
     const open = () => {
       try {
         es = new EventSource('/api/chat/stream');
-        es.onmessage = (e) => {
+        es.onmessage = async (e) => {
           try {
             const msg = JSON.parse(e.data);
-            if (msg?.type === 'message.created') setMessages((prev) => [...prev, msg.payload]);
+            if (msg?.type === 'message.created') {
+              // If we somehow missed events, fetch since last timestamp to catch up
+              const createdAt = new Date(msg.payload?.createdAt || Date.now()).getTime();
+              if (createdAt <= lastTs) {
+                const res = await fetch(`/api/chat/messages?since=${lastTs}`);
+                const more = await res.json();
+                if (Array.isArray(more) && more.length) {
+                  setMessages((prev) => [...prev, ...more]);
+                  lastTs = new Date(more[more.length - 1].createdAt).getTime();
+                }
+              } else {
+                setMessages((prev) => [...prev, msg.payload]);
+                lastTs = createdAt;
+              }
+            }
           } catch {}
         };
         es.onerror = () => {
@@ -147,7 +163,7 @@ export default function Home() {
                   {m.content && <div>{m.content}</div>}
                   {m.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.imageUrl} alt="upload" className="mt-2 rounded-xl max-w-full border border-[var(--border)]" />
+                    <img src={m.imageUrl} alt="upload" className="mt-2 rounded-xl border border-[var(--border)] msg-img" />
                   )}
                 </div>
                 <div className="mt-1 text-[10px] text-[var(--muted)]">{new Date(m.createdAt).toLocaleTimeString()}</div>

@@ -10,8 +10,15 @@ export async function GET(request: NextRequest) {
   const companyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID!;
   const searchParams = request.nextUrl.searchParams;
   const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
+  const since = searchParams.get('since');
 
-  const items = await Message.find({ companyId })
+  const query: any = { companyId };
+  if (since) {
+    const ts = Number(since);
+    if (!Number.isNaN(ts)) query.createdAt = { $gt: new Date(ts) };
+  }
+
+  const items = await Message.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean();
