@@ -17,6 +17,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [selfUserId, setSelfUserId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const sdkRef = useRef<ReturnType<typeof createAppIframeSDK> | null>(null);
 
@@ -50,6 +51,8 @@ export default function Home() {
         setAuthError('Unauthorized');
         return;
       }
+      const authJson = await authRes.json().catch(() => null);
+      if (authJson?.userId) setSelfUserId(authJson.userId as string);
       const res = await fetch(`${API}/api/chat/messages?limit=100`, { headers });
       const data = await res.json();
       setMessages(data);
@@ -124,19 +127,34 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full flex flex-col">
       <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-4 scrollbar">
-        {messages.map(m => (
-          <div key={m._id} className="flex">
-            <div className="flex-1 max-w-[70%]">
-              <div className="bg-[#171719] border border-[var(--border)] rounded-2xl px-3 py-2 text-[13px] leading-6 shadow-sm">
-                {m.content && <div>{m.content}</div>}
-                {m.imageUrl && (
-                  <img src={m.imageUrl} alt="upload" className="mt-2 rounded-xl max-w-full border border-[var(--border)]" />
-                )}
+        {messages.map((m: ChatMessage & { avatarUrl?: string }) => {
+          const isSelf = selfUserId && m.userId === selfUserId;
+          return (
+            <div key={m._id} className={`flex ${isSelf ? 'justify-end' : 'justify-start'}`}>
+              {!isSelf && (
+                <div className="mr-2 mt-1">
+                  <div className="w-7 h-7 rounded-full overflow-hidden bg-[#2a2a2e] border border-[var(--border)]">
+                    {/* avatar placeholder from message avatarUrl when available */}
+                    { m.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                    ) : null }
+                  </div>
+                </div>
+              )}
+              <div className={`max-w-[70%] ${isSelf ? '' : ''}`}>
+                <div className={`${isSelf ? 'bg-[#2563eb] text-white' : 'bg-[#171719] text-[var(--text)]'} rounded-2xl px-3 py-2 text-[13px] leading-6 shadow-sm ${isSelf ? '' : 'border border-[var(--border)]'}`}>
+                  {m.content && <div>{m.content}</div>}
+                  {m.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.imageUrl} alt="upload" className="mt-2 rounded-xl max-w-full border border-[var(--border)]" />
+                  )}
+                </div>
+                <div className="mt-1 text-[10px] text-[var(--muted)]">{new Date(m.createdAt).toLocaleTimeString()}</div>
               </div>
-              <div className="mt-1 text-[10px] text-[var(--muted)]">{new Date(m.createdAt).toLocaleTimeString()}</div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="sticky bottom-0 w-full">
         <div className="bg-[#151517] border-t border-[var(--border)] flex items-center">
