@@ -196,7 +196,7 @@ export default function Home() {
                 </div>
               )}
               <div className={`max-w-[70%] ${isSelf ? '' : ''}`}>
-                <div className={`bubble ${isSelf ? 'bubble-self' : 'bubble-other'}`}>
+                <div className={`bubble ${m.imageUrl ? 'bubble-image-only' : isSelf ? 'bubble-self' : 'bubble-other'}`}>
                   {m.content && <div>{m.content}</div>}
                   {m.imageUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
