@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@whop-apps/iframe": "^0.0.1-canary.117",
     "@whop/api": "^0.0.51",
     "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",

@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createAppIframeSDK } from '@whop-apps/iframe';
 
 type ChatMessage = {
   _id: string;
@@ -15,14 +16,43 @@ export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const sdkRef = useRef<ReturnType<typeof createAppIframeSDK> | null>(null);
+
+  function ensureSdk() {
+    if (!sdkRef.current) {
+      try { sdkRef.current = createAppIframeSDK({}); } catch {}
+    }
+    return sdkRef.current;
+  }
+
+  const getWhopToken = useCallback(async (): Promise<string | undefined> => {
+    try {
+      const sdk = ensureSdk();
+      // Some SDK versions don't expose getUserToken in the TS types; cast to augment
+      const tokenResp = await (sdk as unknown as { getUserToken: () => Promise<{ token?: string }> })
+        .getUserToken();
+      return tokenResp?.token;
+    } catch { return undefined; }
+  }, []);
 
   useEffect(() => {
-    const selfOrigin = process.env.NEXT_PUBLIC_SELF_ORIGIN;
-    const isWhopHost = typeof location !== 'undefined' && location.hostname.endsWith('apps.whop.com');
-    // IMPORTANT: under apps.whop.com, use relative paths so Whop forwards auth headers
-    const apiBase = isWhopHost ? '' : '';
-    fetch(`${apiBase}/api/chat/messages?limit=100`).then(r => r.json()).then(setMessages);
+    const API = (process.env.NEXT_PUBLIC_SELF_ORIGIN || location.origin);
+    (async () => {
+      const token = await getWhopToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      // auth gate first
+      const authRes = await fetch(`${API}/api/auth/verify`, { headers });
+      if (!authRes.ok) {
+        setAuthError('Unauthorized');
+        return;
+      }
+      const res = await fetch(`${API}/api/chat/messages?limit=100`, { headers });
+      const data = await res.json();
+      setMessages(data);
+    })();
     // Subscribe to WS updates
     let ws: WebSocket | null = null;
     function connect() {
@@ -47,7 +77,7 @@ export default function Home() {
     }
     connect();
     return () => { try { ws?.close(); } catch {} };
-  }, []);
+  }, [getWhopToken]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -55,17 +85,21 @@ export default function Home() {
 
   async function sendMessage() {
     let imageUrl: string | undefined;
+    const API = (process.env.NEXT_PUBLIC_SELF_ORIGIN || location.origin);
+    const token = await getWhopToken();
+    const authHeaders: Record<string, string> = {};
+    if (token) authHeaders['Authorization'] = `Bearer ${token}`;
     if (imageFile) {
       const form = new FormData();
       form.append('file', imageFile);
-      const up = await fetch('/api/upload', { method: 'POST', body: form });
+      const up = await fetch(`${API}/api/upload`, { method: 'POST', body: form, headers: authHeaders });
       const json = await up.json();
       imageUrl = json.url;
       setImageFile(null);
     }
-    const res = await fetch('/api/chat/messages', {
+    const res = await fetch(`${API}/api/chat/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify({ content: input || undefined, imageUrl })
     });
     if (res.ok) {
@@ -76,6 +110,14 @@ export default function Home() {
       const err = await res.json().catch(() => ({}));
       console.error('Send failed', res.status, err);
     }
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center">
+        <div className="text-sm text-[var(--muted)]">Access denied. Please open this app from Whop.</div>
+      </div>
+    );
   }
 
   return (
