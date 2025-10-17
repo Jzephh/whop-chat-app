@@ -38,7 +38,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const API = (process.env.NEXT_PUBLIC_SELF_ORIGIN || location.origin);
+    // Use relative REST paths so Whop forwards auth headers and avoids CORS
+    const API = '';
     (async () => {
       const token = await getWhopToken();
       const headers: Record<string, string> = {};
@@ -85,7 +86,8 @@ export default function Home() {
 
   async function sendMessage() {
     let imageUrl: string | undefined;
-    const API = (process.env.NEXT_PUBLIC_SELF_ORIGIN || location.origin);
+    // Use relative REST paths inside Whop to avoid CORS
+    const API = '';
     const token = await getWhopToken();
     const authHeaders: Record<string, string> = {};
     if (token) authHeaders['Authorization'] = `Bearer ${token}`;
