@@ -11,10 +11,13 @@
   "dependencies": {
     "@whop-apps/iframe": "^0.0.1-canary.117",
     "@whop/api": "^0.0.51",
+    "canvas": "^3.2.0",
     "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
+    "eventsource": "^4.0.0",
     "mongoose": "^8.19.1",
     "next": "15.5.5",
+    "node-fetch": "^3.3.2",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
