@@ -161,9 +161,8 @@ export default function Home() {
       body: JSON.stringify({ content: input || undefined, imageUrl })
     });
     if (res.ok) {
-      const msg = await res.json();
-      setMessages(prev => [...prev, msg]);
       setInput("");
+      // Message will be added via SSE stream, no need to add manually
     } else {
       const err = await res.json().catch(() => ({}));
       console.error('Send failed', res.status, err);
