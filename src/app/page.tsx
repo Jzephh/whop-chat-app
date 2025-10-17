@@ -54,30 +54,19 @@ export default function Home() {
       const data = await res.json();
       setMessages(data);
     })();
-    // Subscribe to WS updates
-    let ws: WebSocket | null = null;
-    function connect() {
+    // Subscribe to SSE updates (works under apps.whop.com)
+    const es = new EventSource('/api/chat/stream');
+    es.onmessage = (e) => {
       try {
-        // Always use explicit origin if provided
-        const wsOrigin = (process.env.NEXT_PUBLIC_SELF_ORIGIN || location.origin).replace(/^http/, 'ws');
-        const url = `${wsOrigin}/api/ws`;
-        ws = new WebSocket(url);
-        ws.onmessage = (e) => {
-          const msg = JSON.parse(e.data);
-          if (msg?.type === 'message.created') {
-            setMessages((prev) => [...prev, msg.payload]);
-          }
-        };
-        ws.onerror = (ev) => {
-          console.error('WS error', url, ev);
-        };
-        ws.onclose = () => setTimeout(connect, 1000);
-      } catch {
-        setTimeout(connect, 1000);
-      }
-    }
-    connect();
-    return () => { try { ws?.close(); } catch {} };
+        const msg = JSON.parse(e.data);
+        if (msg?.type === 'message.created') setMessages((prev) => [...prev, msg.payload]);
+      } catch {}
+    };
+    es.onerror = () => {
+      try { es.close(); } catch {}
+      setTimeout(() => { location.reload(); }, 2000);
+    };
+    return () => { try { es.close(); } catch {} };
   }, [getWhopToken]);
 
   useEffect(() => {
