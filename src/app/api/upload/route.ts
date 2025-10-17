@@ -17,19 +17,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing file' }, { status: 400 });
     }
 
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return NextResponse.json({ error: 'Cloudinary env not configured' }, { status: 500 });
+    }
+
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
       api_key: process.env.CLOUDINARY_API_KEY,
       api_secret: process.env.CLOUDINARY_API_SECRET
     });
 
+    // Use upload_stream to handle larger files reliably
     const arrayBuffer = await file.arrayBuffer();
-    const uploadResult = await cloudinary.uploader.upload(`data:${file.type};base64,${Buffer.from(arrayBuffer).toString('base64')}`, {
-      folder: process.env.CLOUDINARY_FOLDER || 'whop-chat',
-      resource_type: 'image'
+    const buffer = Buffer.from(arrayBuffer);
+    const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: process.env.CLOUDINARY_FOLDER || 'whop-chat',
+          resource_type: 'auto',
+          filename_override: file.name
+        },
+        (error, res) => {
+          if (error || !res) return reject(error || new Error('Upload failed'));
+          resolve({ secure_url: res.secure_url!, public_id: res.public_id! });
+        }
+      );
+      stream.end(buffer);
     });
 
-    return NextResponse.json({ url: uploadResult.secure_url, publicId: uploadResult.public_id });
+    return NextResponse.json({ url: result.secure_url, publicId: result.public_id });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
